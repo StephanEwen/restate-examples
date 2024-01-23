@@ -110,10 +110,15 @@ async function move(ctx: restate.RpcContext, driverId: string) {
 }
 
 
-export const router = restate.keyedRouter({
+const router = restate.keyedRouter({
   startDriver,
   pollForWork,
   move
 })
 
-export const service: restate.ServiceApi<typeof router> = { path : "driver-mobile-app" };
+const service: restate.ServiceApi<typeof router> = { path : "driver-mobile-app" };
+
+restate
+  .createServer()
+  .bindKeyedRouter(service.path, router)
+  .listen(9081);
