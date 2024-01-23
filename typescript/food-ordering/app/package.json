@@ -9,24 +9,25 @@
     "prebundle": "rm -rf dist",
     "bundle": "esbuild src/restate-app/app.ts --bundle --minify --sourcemap --platform=node --target=es2020 --outfile=dist/index.js",
     "postbundle": "cd dist && zip -r index.zip index.js*",
-    "app": "node ./dist/app/app.js",
     "restaurant-app": "node ./dist/restaurant/server.js",
+    "app": "node ./dist/restate-app/app.js",
     "app-dev": "ts-node-dev --watch src --respawn --transpile-only src/restate-app/app.ts"
   },
   "dependencies": {
-    "@types/node": "^20.6.3",
-    "@types/uuid": "^9.0.0",
     "@restatedev/restate-sdk": "^0.7.0",
-    "kafkajs": "^2.2.4",
     "axios": "^1.4.0",
     "express": "^4.17.3",
+    "kafkajs": "^2.2.4",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "ts-node-dev": "^1.1.1",
+    "@restatedev/restate": "^0.7.0",
     "@types/express": "^4.17.3",
-    "typescript": "^5.0.2",
+    "@types/node": "^20.6.3",
+    "@types/uuid": "^9.0.0",
+    "esbuild": "^0.18.12",
     "prettier": "^2.8.4",
-    "esbuild": "^0.18.12"
+    "ts-node-dev": "^1.1.1",
+    "typescript": "^5.0.2"
   }
 }
