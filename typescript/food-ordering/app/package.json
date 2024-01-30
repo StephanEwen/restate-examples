@@ -11,7 +11,7 @@
     "postbundle": "cd dist && zip -r index.zip index.js*",
     "restaurant-app": "node ./dist/restaurant/server.js",
     "app": "node ./dist/restate-app/app.js",
-    "app-dev": "ts-node-dev --watch src --respawn --transpile-only src/restate-app/app.ts"
+    "app-dev": "RESTATE_DEBUG_LOGGING=OFF ts-node-dev --watch src --respawn --transpile-only src/restate-app/app.ts"
   },
   "dependencies": {
     "@restatedev/restate-sdk": "^0.7.0",
