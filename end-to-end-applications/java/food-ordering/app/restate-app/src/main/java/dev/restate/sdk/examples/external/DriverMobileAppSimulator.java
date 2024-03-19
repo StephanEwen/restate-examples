@@ -22,6 +22,7 @@ import dev.restate.sdk.examples.generated.DriverMobileAppSimulatorRestate;
 import dev.restate.sdk.examples.types.AssignedDelivery;
 import dev.restate.sdk.examples.types.Location;
 import dev.restate.sdk.examples.utils.GeoUtils;
+import dev.restate.sdk.http.vertx.RestateHttpEndpointBuilder;
 import dev.restate.sdk.serde.jackson.JacksonSerdes;
 import java.time.Duration;
 import org.apache.logging.log4j.LogManager;
@@ -171,5 +172,11 @@ public class DriverMobileAppSimulator
 
     // Call this method again after a short delay
     thisDriverSim.delayed(Duration.ofMillis(MOVE_INTERVAL)).move(request);
+  }
+
+  public static void main(String[] args) {
+    RestateHttpEndpointBuilder.builder()
+            .withService(new DriverMobileAppSimulator()) // external mobile app on driver's phone
+            .buildAndListen(9081);
   }
 }

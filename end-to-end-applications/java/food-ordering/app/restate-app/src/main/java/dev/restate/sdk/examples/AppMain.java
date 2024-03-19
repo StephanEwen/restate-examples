@@ -22,7 +22,6 @@ public class AppMain {
         .withService(new DeliveryManager())
         .withService(new DriverDeliveryMatcher())
         .withService(new DriverDigitalTwin())
-        .withService(new DriverMobileAppSimulator()) // external mobile app on driver's phone
-        .buildAndListen();
+        .buildAndListen(9080);
   }
 }

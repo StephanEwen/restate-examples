@@ -54,30 +54,38 @@ services:
       KAFKA_REST_ACCESS_CONTROL_ALLOW_METHODS: "OPTIONS,GET,POST,PUT,DELETE"
       KAFKA_REST_ACCESS_CONTROL_ALLOW_HEADERS: "origin,content-type,accept,authorization"
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.47
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
   restaurantpos:
     container_name: restaurantpos
-    image: restate-foodorder-example-restaurant:0.8.0
+    image: restaurant-app:0.0.1
     environment:
       - RESTATE_RUNTIME_ENDPOINT=http://runtime:8080
     ports:
       - "5050:5050"
     entrypoint: ["java", "-cp", "@/app/jib-classpath-file", "dev.restate.sdk.examples.RestaurantMain"]
 
-  driver_mobile_app:
-    container_name: driver_mobile_app
-    image: restate-foodorder-example-driver:0.8.0
+  restate_app:
+    container_name: restate_app
+    image: restate-app:0.0.1
     environment:
+      - RESTAURANT_ENDPOINT=http://restaurantpos:5050
       - KAFKA_BOOTSTRAP_SERVERS=broker:29092
 
   runtime:
     image: docker.io/restatedev/restate:0.8
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
-      - driver_mobile_app
+      - restate_app
       - restaurantpos
       - broker
       - rest-proxy
+      - jaeger
     ports:
       - "9070:9070"
       - "9071:9071"
@@ -85,30 +93,30 @@ services:
     volumes:
       - ./restate-docker.yaml:/restate.yaml
     environment:
+      - RESTATE_OBSERVABILITY__TRACING__ENDPOINT=http://jaeger:4317
       - RESTATE_CONFIG=/restate.yaml
 
-  # runtimesetup:
-  #   image: alpine
-  #   depends_on:
-  #     - runtime
-  #   restart: "no"
-  #   entrypoint: ["sh", "-c", "-x", "sleep 5 && 
-  #   apk add --no-cache bash jq curl &&
-  #   echo '-w \"\\n\"' >> ~/.curlrc &&
-  #   curl -i -s --fail -X POST 'runtime:9070/deployments' -H 'content-type: application/json' -d '{\"uri\": \"http://driver_mobile_app:9081\"}' &&
-  #   curl -i -s --fail -X POST 'runtime:9070/deployments' -H 'content-type: application/json' -d '{\"uri\": \"http://host.docker.internal:9080\"}' && 
-  #   sleep 3 && 
-  #   curl -i -s --fail -X POST 'runtime:9070/subscriptions' -H 'content-type: application/json' -d '{ \"source\":\"kafka://my-cluster/orders\", \"sink\":\"service://order.OrderWorkflow/HandleOrderCreationEvent\" }' &&
-  #   curl -i -s --fail -X POST 'runtime:9070/subscriptions' -H 'content-type: application/json' -d '{ \"source\":\"kafka://my-cluster/driver-updates\", \"sink\":\"service://order.DriverDigitalTwin/HandleDriverLocationUpdateEvent\" }' &&
-  #   sleep 3 && 
-  #   curl -i -s --fail -X POST -H 'content-type: application/json' 'runtime:8080/order.DriverMobileAppSimulator/StartDriver' -d '{\"driver_id\": \"driver-A\"}' && 
-  #   curl -i -s --fail -X POST -H 'content-type: application/json' 'runtime:8080/order.DriverMobileAppSimulator/StartDriver' -d '{\"driver_id\": \"driver-B\"}' && 
-  #   exit 1"]
+  runtimesetup:
+    image: alpine
+    depends_on:
+      - runtime
+      - restate_app
+    restart: "no"
+    entrypoint: ["sh", "-c", "sleep 5 && 
+    apk add --no-cache bash jq curl &&
+    curl -X POST 'runtime:9070/deployments' -H 'content-type: application/json' -d '{\"uri\": \"http://restate_app:9080\"}' &&
+    sleep 3 && 
+    curl -X POST 'runtime:9070/subscriptions' -H 'content-type: application/json' -d '{ \"source\":\"kafka://my-cluster/orders\", \"sink\":\"service://order.OrderWorkflow/HandleOrderCreationEvent\" }' &&
+    curl -X POST 'runtime:9070/subscriptions' -H 'content-type: application/json' -d '{ \"source\":\"kafka://my-cluster/driver-updates\", \"sink\":\"service://order.DriverDigitalTwin/HandleDriverLocationUpdateEvent\" }' &&
+    sleep 3 && 
+    curl -X POST -H 'content-type: application/json' 'runtime:8080/order.DriverMobileAppSimulator/StartDriver' -d '{\"driver_id\": \"driver-A\"}' && 
+    curl -X POST -H 'content-type: application/json' 'runtime:8080/order.DriverMobileAppSimulator/StartDriver' -d '{\"driver_id\": \"driver-B\"}' && 
+    exit 1"]
 
   foodorderingwebui:
     build:
       context: ./webui
     depends_on:
-      - runtime
+      - runtimesetup
     ports:
       - "3000:3000"

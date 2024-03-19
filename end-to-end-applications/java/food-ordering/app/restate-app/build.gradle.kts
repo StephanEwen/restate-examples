@@ -67,7 +67,12 @@ application {
 }
 
 
+//jib {
+//    to.image = "restate-foodorder-example-app:0.8.0"
+//    container.mainClass  = "dev.restate.sdk.examples.AppMain"
+//}
+
 jib {
-    to.image = "restate-app:0.0.1"
-    container.mainClass  = "dev.restate.sdk.examples.AppMain"
+    to.image = "restate-foodorder-example-driver:0.8.0"
+    container.mainClass  = "dev.restate.sdk.examples.external.DriverMobileAppSimulator"
 }

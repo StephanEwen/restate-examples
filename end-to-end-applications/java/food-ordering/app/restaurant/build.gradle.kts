@@ -34,6 +34,6 @@ application {
 
 
 jib {
-    to.image = "restaurant-app:0.0.1"
+    to.image = "restate-foodorder-example-restaurant:0.8.0"
     container.mainClass  = "dev.restate.sdk.examples.RestaurantMain"
 }

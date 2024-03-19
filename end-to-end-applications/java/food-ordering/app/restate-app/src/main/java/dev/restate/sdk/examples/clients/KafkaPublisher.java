@@ -23,7 +23,7 @@ public class KafkaPublisher {
   public static final String KAFKA_BOOTSTRAP_SERVERS =
       System.getenv("KAFKA_BOOTSTRAP_SERVERS") != null
           ? System.getenv("KAFKA_BOOTSTRAP_SERVERS")
-          : "127.0.0.1:9092";
+          : "localhost:9092";
 
   private final KafkaProducer<String, byte[]> producer;
 

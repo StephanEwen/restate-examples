@@ -13,8 +13,6 @@ package dev.restate.sdk.examples;
 
 import static dev.restate.sdk.examples.utils.TypeUtils.statusToProto;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.restate.sdk.ObjectContext;
 import dev.restate.sdk.common.CoreSerdes;
 import dev.restate.sdk.common.TerminalException;
@@ -26,6 +24,8 @@ import dev.restate.sdk.examples.generated.OrderStatusServiceRestate;
 import dev.restate.sdk.examples.generated.OrderWorkflowRestate;
 import dev.restate.sdk.examples.types.OrderRequest;
 import dev.restate.sdk.examples.types.StatusEnum;
+import dev.restate.sdk.examples.utils.Json;
+
 import java.time.Duration;
 import java.util.UUID;
 
@@ -41,19 +41,13 @@ public class OrderWorkflow extends OrderWorkflowRestate.OrderWorkflowRestateImpl
   @Override
   public void handleOrderCreationEvent(ObjectContext ctx, KafkaOrderEvent event)
       throws TerminalException {
-    var orderStatusSend = OrderStatusServiceRestate.newClient(ctx);
+    var statusServiceClient = OrderStatusServiceRestate.newClient(ctx);
 
-    ObjectMapper mapper = new ObjectMapper();
-    OrderRequest order;
-    try {
-      order = mapper.readValue(event.getPayload().toStringUtf8(), OrderRequest.class);
-    } catch (JsonProcessingException e) {
-      throw new TerminalException("Parsing raw JSON order failed: " + e.getMessage());
-    }
+    OrderRequest order = Json.readOrder(event.getPayload().toStringUtf8());
     String id = order.getOrderId();
 
     // 1. Set status
-    orderStatusSend.oneWay().setStatus(statusToProto(id, StatusEnum.CREATED));
+    statusServiceClient.setStatus(statusToProto(id, StatusEnum.CREATED));
 
     // 2. Handle payment
     String token = ctx.sideEffect(CoreSerdes.JSON_STRING, () -> UUID.randomUUID().toString());
@@ -62,21 +56,21 @@ public class OrderWorkflow extends OrderWorkflowRestate.OrderWorkflowRestateImpl
             CoreSerdes.JSON_BOOLEAN, () -> paymentClnt.charge(id, token, order.getTotalCost()));
 
     if (!paid) {
-      orderStatusSend.oneWay().setStatus(statusToProto(id, StatusEnum.REJECTED));
+      statusServiceClient.setStatus(statusToProto(id, StatusEnum.REJECTED));
       return;
     }
 
     // 3. Schedule preparation
-    orderStatusSend.setStatus(statusToProto(order.getOrderId(), StatusEnum.SCHEDULED));
+    statusServiceClient.setStatus(statusToProto(order.getOrderId(), StatusEnum.SCHEDULED));
     ctx.sleep(Duration.ofMillis(order.getDeliveryDelay()));
 
     // 4. Trigger preparation
     var preparationAwakeable = ctx.awakeable(CoreSerdes.VOID);
     ctx.sideEffect(() -> restaurant.prepare(id, preparationAwakeable.id()));
-    orderStatusSend.setStatus(statusToProto(id, StatusEnum.IN_PREPARATION));
+    statusServiceClient.setStatus(statusToProto(id, StatusEnum.IN_PREPARATION));
 
     preparationAwakeable.await();
-    orderStatusSend.setStatus(statusToProto(id, StatusEnum.SCHEDULING_DELIVERY));
+    statusServiceClient.setStatus(statusToProto(id, StatusEnum.SCHEDULING_DELIVERY));
 
     // 5. Find a driver and start delivery
     var deliveryAwakeable = ctx.awakeable(CoreSerdes.VOID);
@@ -89,6 +83,6 @@ public class OrderWorkflow extends OrderWorkflowRestate.OrderWorkflowRestateImpl
             .build();
     DeliveryManagerRestate.newClient(ctx).oneWay().start(deliveryRequest);
     deliveryAwakeable.await();
-    orderStatusSend.setStatus(statusToProto(order.getOrderId(), StatusEnum.DELIVERED));
+    statusServiceClient.setStatus(statusToProto(order.getOrderId(), StatusEnum.DELIVERED));
   }
 }

@@ -1,5 +1,5 @@
 # pull official base image
-FROM node:14.17.3-alpine
+FROM confluentinc/cp-kafka:7.5.0
 
 # set working directory
 WORKDIR /app
