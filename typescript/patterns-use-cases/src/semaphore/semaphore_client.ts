@@ -63,7 +63,7 @@ export function limitHandler<C extends Context, O, I>(
       for (let i = permits.length - 1; i >= 0; i--) {
         const client = ctx.objectSendClient(semaphore, permits[i].key);
 
-        client.release();
+        client.releaseAcquired();
       }
     };
 
@@ -81,18 +81,20 @@ export function limitHandler<C extends Context, O, I>(
       const client = ctx.objectSendClient(semaphore, scopedKey);
 
       const awakeable = ctx.awakeable();
-      client.acquire({
-        awakeable: awakeable.id,
-        limit: limit.limit,
-      });
 
       try {
+        client.acquire({
+          awakeable: awakeable.id,
+          limit: limit.limit,
+        });
+        
         await awakeable.promise;
         permits.push({ key: scopedKey });
+
       } catch (e) {
         // this should only happen on cancellation; inform the semaphore that we no longer need our permit, and release the ones we already have
         if (e instanceof TerminalError) {
-          client.release({ awakeable: awakeable.id });
+          client.cancelAcquire(awakeable.id);
           releaseAll();
         }
 
